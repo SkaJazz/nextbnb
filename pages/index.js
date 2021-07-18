@@ -1,61 +1,35 @@
-import Head from 'next/head'
-import { connectToDatabase } from '../util/mongodb'
+import Head from "next/head";
+import { connectToDatabase } from "../util/mongodb";
 
-export default function Home({ isConnected }) {
+export default function Home({ hotelsInfo }) {
+  console.log(hotelsInfo[0]);
+
   return (
     <div className="container">
       <Head>
-        <title>Create Next App</title>
+        <title>NextBnB</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main>
-        <h1 className="title">
-          Welcome to <a href="https://nextjs.org">Next.js with MongoDB!</a>
-        </h1>
+        <h1 className="title">NextBnB App</h1>
 
-        {isConnected ? (
-          <h2 className="subtitle">You are connected to MongoDB</h2>
-        ) : (
-          <h2 className="subtitle">
-            You are NOT connected to MongoDB. Check the <code>README.md</code>{' '}
-            for instructions.
-          </h2>
+        {hotelsInfo && (
+          <ul>
+            {hotelsInfo.map((hotel, i) => (
+              <li className="list-item" key={i}>
+                <div className="card">
+                  <img src={hotel.image} />
+                  <h4>{hotel.name}</h4>
+                  <p>{hotel.summary}</p>
+                  <a href={`/listing/${hotel.id}`}>
+                    <button>More Info</button>
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-
-        <p className="description">
-          Get started by editing <code>pages/index.js</code>
-        </p>
-
-        <div className="grid">
-          <a href="https://nextjs.org/docs" className="card">
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className="card">
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className="card"
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="card"
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
       </main>
 
       <footer>
@@ -64,7 +38,7 @@ export default function Home({ isConnected }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Powered by{' '}
+          Powered by{" "}
           <img src="/vercel.svg" alt="Vercel Logo" className="logo" />
         </a>
       </footer>
@@ -163,6 +137,7 @@ export default function Home({ isConnected }) {
         }
 
         .card {
+          cursor: pointer;
           margin: 1rem;
           flex-basis: 45%;
           padding: 1.5rem;
@@ -174,6 +149,17 @@ export default function Home({ isConnected }) {
           transition: color 0.15s ease, border-color 0.15s ease;
         }
 
+        .card img {
+          width: 380px;
+        }
+
+        .card button {
+          cursor: pointer;
+          margin-top: 20px;
+          width: 50%;
+          height: 30px;
+        }
+
         .card:hover,
         .card:focus,
         .card:active {
@@ -181,9 +167,9 @@ export default function Home({ isConnected }) {
           border-color: #0070f3;
         }
 
-        .card h3 {
-          margin: 0 0 1rem 0;
-          font-size: 1.5rem;
+        .card h4 {
+          margin: 2rem 0 0.7rem 0;
+          font-size: 1.1rem;
         }
 
         .card p {
@@ -194,6 +180,10 @@ export default function Home({ isConnected }) {
 
         .logo {
           height: 1em;
+        }
+
+        .list-item {
+          list-style: none;
         }
 
         @media (max-width: 600px) {
@@ -219,15 +209,37 @@ export default function Home({ isConnected }) {
         }
       `}</style>
     </div>
-  )
+  );
 }
 
 export async function getServerSideProps(context) {
-  const { client } = await connectToDatabase()
+  const { db } = await connectToDatabase();
 
-  const isConnected = await client.isConnected()
+  const data = await db
+    .collection("listingsAndReviews")
+    .find()
+    .sort({ _id: 1 })
+    .limit(20)
+    .toArray();
+
+  const hotelsInfo = data.map(property => {
+    const toNumber = notNumber =>
+      JSON.parse(JSON.stringify(notNumber)).$numberDecimal;
+
+    return {
+      id: property._id,
+      name: property.name,
+      image: property.images.picture_url,
+      summary: property.summary,
+      address: property.address,
+      amenities: property.amenities,
+      guests: property.accommodates,
+      price: toNumber(property.price),
+      cleaning_fee: property.cleaning_fee ? toNumber(property.cleaning_fee) : 0,
+    };
+  });
 
   return {
-    props: { isConnected },
-  }
+    props: { hotelsInfo },
+  };
 }
